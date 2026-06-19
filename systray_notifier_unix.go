@@ -1,7 +1,7 @@
 package systray
 
 import (
-	"fyne.io/systray/internal/generated/notifier"
+	"github.com/anna-oake/systray/internal/generated/notifier"
 	"github.com/godbus/dbus/v5"
 )
 
