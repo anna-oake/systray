@@ -1007,6 +1007,16 @@ func SetIconFromFilePath(iconFilePath string) error {
 	return nil
 }
 
+// SetIconName sets the systray icon by icon theme name.
+// It is only supported on Linux.
+func SetIconName(name string) {
+}
+
+// SetIconThemePath sets the additional icon theme path used for named icons.
+// It is only supported on Linux.
+func SetIconThemePath(iconThemePath string) {
+}
+
 // SetTemplateIcon sets the systray icon as a template icon (on macOS), falling back
 // to a regular icon on other platforms.
 // templateIconBytes and iconBytes should be the content of .ico for windows and

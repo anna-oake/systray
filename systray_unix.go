@@ -51,6 +51,7 @@ func SetTemplateIcon(templateIconBytes []byte, regularIconBytes []byte) {
 func SetIcon(iconBytes []byte) {
 	instance.lock.Lock()
 	instance.iconData = iconBytes
+	instance.iconName = ""
 	props := instance.props
 	conn := instance.conn
 	defer instance.lock.Unlock()
@@ -59,6 +60,7 @@ func SetIcon(iconBytes []byte) {
 		return
 	}
 
+	props.SetMust("org.kde.StatusNotifierItem", "IconName", "")
 	props.SetMust("org.kde.StatusNotifierItem", "IconPixmap",
 		[]PX{convertToPixels(iconBytes)})
 	if conn == nil {
@@ -84,6 +86,64 @@ func SetIconFromFilePath(iconFilePath string) error {
 	}
 	SetIcon(bytes)
 	return nil
+}
+
+// SetIconName sets the systray icon by icon theme name.
+func SetIconName(name string) {
+	instance.lock.Lock()
+	instance.iconName = name
+	instance.iconData = nil
+	props := instance.props
+	conn := instance.conn
+	defer instance.lock.Unlock()
+
+	if props == nil {
+		return
+	}
+
+	props.SetMust("org.kde.StatusNotifierItem", "IconName", name)
+	props.SetMust("org.kde.StatusNotifierItem", "IconPixmap", []PX{})
+	if conn == nil {
+		return
+	}
+
+	err := notifier.Emit(conn, &notifier.StatusNotifierItem_NewIconSignal{
+		Path: path,
+		Body: &notifier.StatusNotifierItem_NewIconSignalBody{},
+	})
+	if err != nil {
+		log.Printf("systray error: failed to emit new icon signal: %s\n", err)
+		return
+	}
+}
+
+// SetIconThemePath sets the additional icon theme path used for named icons.
+func SetIconThemePath(iconThemePath string) {
+	instance.lock.Lock()
+	instance.iconThemePath = iconThemePath
+	props := instance.props
+	conn := instance.conn
+	defer instance.lock.Unlock()
+
+	if props == nil {
+		return
+	}
+
+	props.SetMust("org.kde.StatusNotifierItem", "IconThemePath", iconThemePath)
+	if conn == nil {
+		return
+	}
+
+	err := notifier.Emit(conn, &notifier.StatusNotifierItem_NewIconThemePathSignal{
+		Path: path,
+		Body: &notifier.StatusNotifierItem_NewIconThemePathSignalBody{
+			IconThemePath: iconThemePath,
+		},
+	})
+	if err != nil {
+		log.Printf("systray error: failed to emit new icon theme path signal: %s\n", err)
+		return
+	}
 }
 
 // SetTitle sets the systray title, only available on Mac and Linux.
@@ -316,7 +376,9 @@ type tray struct {
 	conn *dbus.Conn
 
 	// icon data for the main systray icon
-	iconData []byte
+	iconData      []byte
+	iconName      string
+	iconThemePath string
 	// title and tooltip state
 	title, tooltipTitle string
 
@@ -361,19 +423,19 @@ func (t *tray) createPropSpec() map[string]map[string]*prop.Prop {
 				Callback: nil,
 			},
 			"IconName": {
-				Value:    "",
+				Value:    t.iconName,
 				Writable: false,
 				Emit:     prop.EmitTrue,
 				Callback: nil,
 			},
 			"IconPixmap": {
-				Value:    []PX{convertToPixels(t.iconData)},
+				Value:    t.iconPixmap(),
 				Writable: true,
 				Emit:     prop.EmitTrue,
 				Callback: nil,
 			},
 			"IconThemePath": {
-				Value:    "",
+				Value:    t.iconThemePath,
 				Writable: false,
 				Emit:     prop.EmitTrue,
 				Callback: nil,
@@ -397,6 +459,13 @@ func (t *tray) createPropSpec() map[string]map[string]*prop.Prop {
 				Callback: nil,
 			},
 		}}
+}
+
+func (t *tray) iconPixmap() []PX {
+	if t.iconName != "" {
+		return []PX{}
+	}
+	return []PX{convertToPixels(t.iconData)}
 }
 
 // PX is picture pix map structure with width and high

@@ -104,6 +104,16 @@ func SetIconFromFilePath(iconFilePath string) error {
 	return nil
 }
 
+// SetIconName sets the systray icon by icon theme name.
+// It is only supported on Linux.
+func SetIconName(name string) {
+}
+
+// SetIconThemePath sets the additional icon theme path used for named icons.
+// It is only supported on Linux.
+func SetIconThemePath(iconThemePath string) {
+}
+
 // SetTitle sets the systray title, only available on Mac and Linux.
 func SetTitle(title string) {
 	C.setTitle(C.CString(title))
